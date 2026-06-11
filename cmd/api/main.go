@@ -19,10 +19,14 @@ import (
 	// compiler complaining that the package isn't being used.
 	"github.com/fiston7-code/greenlight/internal/data"
 	"github.com/fiston7-code/greenlight/internal/mailer"
+	"github.com/fiston7-code/greenlight/internal/vcs"
 	_ "github.com/lib/pq"
 )
 
-const version = "1.0.0"
+// Make version a variable (rather than a constant) and set its value to vcs.Version().
+var (
+	version = vcs.Version()
+)
 
 // Update the config struct to hold the SMTP server settings.
 type config struct {

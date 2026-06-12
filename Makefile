@@ -74,3 +74,98 @@ build/api:
 .PHONY: build/api-linux
 build/api-linux:
 	GOOS=linux GOARCH=amd64 go build -ldflags='-s' -o=./bin/linux_amd64/api ./cmd/api
+
+# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+production_host_ip = 165.232.71.54
+
+## production/connect: connect to the production server
+.PHONY: production/connect
+production/connect:
+	ssh -i ~/.ssh/id_rsa_greenlight greenlight@$(production_host_ip)
+
+	# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+production_host_ip = "165.232.71.54"
+
+## production/connect: connect to the production server
+.PHONY: production/connect
+production/connect:
+	ssh -i ~/.ssh/id_rsa_greenlight greenlight@$(production_host_ip)
+
+## production/deploy/api: compile, deploy the api, and run migrations in production
+.PHONY: production/deploy/api
+production/deploy/api:
+	@echo 'Compiling application for Linux...'
+	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./bin/linux_amd64/api ./cmd/api
+	@echo 'Transferring API binary to server...'
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./bin/linux_amd64/api greenlight@$(production_host_ip):~
+	@echo 'Transferring migrations to server...'
+	rsync -rP --delete -e "ssh -i ~/.ssh/id_rsa_greenlight" ./migrations greenlight@$(production_host_ip):~
+	@echo 'Running database migrations...'
+	ssh -i ~/.ssh/id_rsa_greenlight -t greenlight@$(production_host_ip) 'migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up'
+
+	# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+production_host_ip = '165.232.71.54'
+
+## production/connect: connect to the production server
+.PHONY: production/connect
+production/connect:
+	ssh -i ~/.ssh/id_rsa_greenlight greenlight@$(production_host_ip)
+
+## production/deploy/api: deploy the api to production
+.PHONY: production/deploy/api
+production/deploy/api:
+	@echo 'Compiling application for Linux...'
+	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./bin/linux_amd64/api ./cmd/api
+	@echo 'Transferring files to server...'
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./bin/linux_amd64/api greenlight@$(production_host_ip):~
+	rsync -rP --delete -e "ssh -i ~/.ssh/id_rsa_greenlight" ./migrations greenlight@$(production_host_ip):~
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./remote/production/api.service greenlight@$(production_host_ip):~
+	@echo 'Executing remote deployment commands...'
+	ssh -i ~/.ssh/id_rsa_greenlight -t greenlight@$(production_host_ip) '\
+		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up \
+		&& sudo mv ~/api.service /etc/systemd/system/greenlight.service \
+		&& sudo systemctl daemon-reload \
+		&& sudo systemctl enable greenlight \
+		&& sudo systemctl restart greenlight \
+	'
+
+	# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+production_host_ip = '165.232.71.54'
+
+## production/connect: connect to the production server
+.PHONY: production/connect
+production/connect:
+	ssh -i ~/.ssh/id_rsa_greenlight greenlight@$(production_host_ip)
+
+## production/deploy/api: deploy the api, migrations, and server configs to production
+.PHONY: production/deploy/api
+production/deploy/api:
+	@echo 'Compiling application for Linux...'
+	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ./bin/linux_amd64/api ./cmd/api
+	@echo 'Transferring files to server...'
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./bin/linux_amd64/api greenlight@$(production_host_ip):~
+	rsync -rP --delete -e "ssh -i ~/.ssh/id_rsa_greenlight" ./migrations greenlight@$(production_host_ip):~
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./remote/production/api.service greenlight@$(production_host_ip):~
+	rsync -P -e "ssh -i ~/.ssh/id_rsa_greenlight" ./remote/production/Caddyfile greenlight@$(production_host_ip):~
+	@echo 'Executing remote deployment commands...'
+	ssh -i ~/.ssh/id_rsa_greenlight -t greenlight@$(production_host_ip) '\
+		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up \
+		&& sudo mv ~/api.service /etc/systemd/system/greenlight.service \
+		&& sudo systemctl daemon-reload \
+		&& sudo systemctl enable greenlight \
+		&& sudo systemctl restart greenlight \
+		&& sudo mv ~/Caddyfile /etc/caddy/Caddyfile \
+		&& sudo systemctl reload caddy \
+	'
